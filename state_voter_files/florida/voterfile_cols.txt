@@ -1,0 +1,38 @@
+1	County Code	3	See Code Definitions
+2	Voter ID	10	
+3	Name Last 	30	
+4	Name Suffix	5	
+5	Name First	30	
+6	Name Middle	30	
+7	Suppress Address	1	Y, N
+8	Residence Address Line 1	50	
+9	Residence Address Line 2	40	
+10	Residence City (USPS)	40	
+11	Residence State	2	State Abbreviation
+12	Residence Zipcode	10	
+13	Mailing Address Line 1	40	
+14	Mailing Address Line 2	40	
+15	Mailing Address Line 3	40	
+16	Mailing City	40	
+17	Mailing State	2	State Abbreviation
+18	Mailing Zipcode	12	
+19	Mailing Country	40	
+20	Gender	1	See Code Definitions
+21	Race	1	See Race Table
+22	Birth Date	10	MM/DD/YYYY
+23	Registration Date	10	MM/DD/YYYY
+24	Party Affiliation	3	See Code Definitions
+25	Precinct	6	
+26	Precinct Group	3	
+27	Precinct Split	6	
+28	Precinct Suffix	3	
+29	Voter Status	3	See Code Definitions
+30	Congressional District	3	999
+31	House District	3	999
+32	Senate District	3	999
+33	County Commission District	3	999
+34	School Board District	2	99
+35	Daytime Area Code	3	
+36	Daytime Phone Number	7	
+37	Daytime Phone Extension	4	
+38	Email	

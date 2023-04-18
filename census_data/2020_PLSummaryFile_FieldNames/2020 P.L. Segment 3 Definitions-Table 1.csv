@@ -1,0 +1,16 @@
+TABLE NUMBER AND CONTENTS,DATA DICTIONARY REFERENCE NAME,SEGMENT,MAX SIZE,DATA TYPE,NOTES
+File Identification,FILEID,03,6,A/N,
+State/US-Abbreviation (USPS),STUSAB,03,2,A,
+Characteristic Iteration,CHARITER,03,3,A/N,
+Characteristic Iteration File Sequence Number,CIFSN,03,2,A/N,
+Logical Record Number,LOGRECNO,03,7,N,
+Total:,P0050001,03,9,N,P5. GROUP QUARTERS POPULATION BY MAJOR GROUP QUARTERS TYPE [10]
+Institutionalized population:,P0050002,03,9,N,Universe: Population in group quarters
+Correctional facilities for adults,P0050003,03,9,N,
+Juvenile facilities,P0050004,03,9,N,
+Nursing facilities/Skilled-nursing facilities,P0050005,03,9,N,
+Other institutional facilities,P0050006,03,9,N,
+Noninstitutionalized population:,P0050007,03,9,N,
+College/University student housing,P0050008,03,9,N,
+Military quarters,P0050009,03,9,N,
+Other noninstitutional facilities,P0050010,03,9,N,

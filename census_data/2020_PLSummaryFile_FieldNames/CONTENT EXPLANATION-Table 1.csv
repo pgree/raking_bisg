@@ -1,0 +1,7 @@
+The content of this workbook is derived from the 2020 Census State Redistricting (P.L. 94-171) Summary File Technical Documentation. ,https://www2.census.gov/programs-surveys/decennial/2020/technical-documentation/complete-tech-docs/summary-file/2020Census_PL94_171Redistricting_StatesTechDoc_English.pdf,,,
+,,,,
+"The purpose of this workbook is to provide data users with specific information about the legacy format summary file, specifically the field names that need to be used when importing the geoheader and data segments into a database or spreadhseet.",,,,
+,,,,
+There are two tabs for the geoheader and two tabs for each of the data segments. ,,,,
+"The tabs described as ""Definitions"" is a table containing both the field names that should be used and their plain English definition.",,,,
+"The tabs described as ""Fields"" is a table containing only the field names as column headings",,,,
