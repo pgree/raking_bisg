@@ -1,6 +1,10 @@
 # Race/ethnicity predictions via raking and BISG
 
-This repository includes all software for reproducing the figures and tables of [citation and link]. 
+This repository includes all software for reproducing the figures and tables of the paper 
+"BISG: When inferring race or ethnicity, does it matter that people often live near 
+their relatives?" by Philip Greengard and Andrew Gelman 
+([pre-print](https://arxiv.org/abs/2304.09126)). 
+
 The code in this repository constructs race/ethnicity (subpopulation) predictions for registered voters in 
 several states. 
 
@@ -56,7 +60,7 @@ and when data is not generated with the BISG assumption, raking predictions stil
 correct race/ethnicity margin.
 
 ## Reproducing figures and tables
-The figures and tables of [citation] from North Carolina can be reproduced
+The figures and tables of [the paper](https://arxiv.org/abs/2304.09126) from North Carolina can be reproduced
 by running the script
 ```
 $ python3 ./download_data_and_run.py
@@ -75,7 +79,7 @@ downloaded using the above script.
 
 ## Python files
 
-`{state}_vf.py`: codes for reading a voter file from a particular state
+`{state}_vf.py`: reads in a voter file from a particular state
 
 `raking_bisg.py` : the main statistical codes, including building `df_agg` which involves computing 
 raking and BISG predictions
