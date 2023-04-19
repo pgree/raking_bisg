@@ -42,13 +42,11 @@ def main():
     dir_out = "/Users/ramin/bisg/writeup/overleaf/"
     states = ["nc", "nc", "fl"]
     years = [2020, 2010, 2020]
-    states = ["nc", "nc"]
-    years = [2020, 2010]
     for state, year in zip(states, years):
         print(state, year)
-        # subsampled_figures_tables(state, year, dir_out, load=True)
+        subsampled_figures_tables(state, year, dir_out, load=True)
         calib_map_figures_tables(state, year, dir_out, load=True)
-        # self_contained_figures_tables(state, year, dir_out, load=True)
+        self_contained_figures_tables(state, year, dir_out, load=True)
 
 
 def subsampled_figures_tables(state, year, dir_out, load=False):

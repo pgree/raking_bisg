@@ -55,15 +55,10 @@ np.seterr(divide="ignore", invalid="ignore")
 
 
 def main():
-    # write_dataverse_files()
-    # quit()
-
-    state = "nc"
+    state = "fl"
     year = 2020
-    df_agg = make_df_agg(state, year, subsample=False, load=False)
-    quit()
-
-    name = "marshall"
+    df_agg = make_df_agg(state, year, subsample=False, load=True)
+    name = "takriti"
     mask = df_agg["name"] == name
     df_tmp = df_agg.loc[mask, ["name", "county", "vf_tot"] + RAKE_COLS]
     print(tabulate(df_tmp, headers="keys", tablefmt="psql"))
