@@ -158,6 +158,52 @@ FL_COUNTY_REGIONS_DICT = {
     "southeast": ["Martin", "PalmBeach", "Broward", "Monroe", "Miami-Dade"],
 }
 
+FL_RURAL_COUNTIES = [
+    'Walton',
+    'Holmes',
+    'Washington',
+    'Jackson',
+    'Calhoun',
+    'Gulf',
+    'Gadsden',
+    'Liberty',
+    'Franklin',
+    'Wakulla',
+    'Jefferson',
+    'Madison',
+    'Taylor',
+    'Hamilton',
+    'Suwannee',
+    'Lafayette',
+    'Dixie',
+    'Columbia',
+    'Gilchrist',
+    'Levy',
+    'Baker',
+    'Union',
+    'Bradford',
+    'Hardee',
+    'Desoto',
+    'Highlands',
+    'Okeechobee',
+    'Glades',
+    'Hendry',
+    'Monroe'
+]
+
+COUNTIES_POP_ORDER = ['Lafayette', 'Liberty', 'Glades', 'Union', 'Hamilton', 'Calhoun',
+       'Franklin', 'Jefferson', 'Gulf', 'Dixie', 'Holmes', 'Madison',
+       'Gilchrist', 'Taylor', 'Hardee', 'Baker', 'Washington', 'Bradford',
+       'Desoto', 'Hendry', 'Okeechobee', 'Wakulla', 'Suwannee', 'Jackson',
+       'Levy', 'Gadsden', 'Columbia', 'Putnam', 'Monroe', 'Walton',
+       'Highlands', 'Nassau', 'Flagler', 'Sumter', 'Citrus', 'Martin',
+       'Indian River', 'Bay', 'Hernando', 'SantaRosa', 'Okaloosa', 'Charlotte',
+       'Clay', 'Alachua', 'St.Johns', 'Leon', 'St.Lucie', 'Escambia',
+       'Collier', 'Osceola', 'Lake', 'Marion', 'Manatee', 'Seminole',
+       'Sarasota', 'Pasco', 'Volusia', 'Brevard', 'Polk', 'Lee', 'Duval',
+       'Pinellas', 'Orange', 'Hillsborough', 'PalmBeach', 'Broward',
+       'Miami-Dade']
+
 COUNTY_TO_REGION_DICT = {}
 for key in FL_COUNTY_REGIONS_DICT:
     for county in FL_COUNTY_REGIONS_DICT[key]:
@@ -165,8 +211,21 @@ for key in FL_COUNTY_REGIONS_DICT:
 
 
 def main():
-    df_vf = fl_voter_file()
-    print(df_vf)
+    df_vf = fl_voter_file(verbose=True, save=True, load=False)
+    quit()
+    df_vf['county_long'] = df_vf['county'].map(COUNTY_DICT)
+    df_vf['rural'] = df_vf['county_long'].isin(FL_RURAL_COUNTIES)
+    print(df_vf.head())
+
+    rural_counties2 = df_vf[df_vf['rural']]['county_long'].unique()
+    rural_counties2.sort()
+    print(rural_counties2)
+
+    FL_RURAL_COUNTIES.sort()
+    print(FL_RURAL_COUNTIES)
+
+
+
 
 
 def fl_voter_file(min_names=0, verbose=False, load=True, save=True):
@@ -214,6 +273,7 @@ def fl_voter_file(min_names=0, verbose=False, load=True, save=True):
         "Residence Zipcode",
         "Gender",
         "Race",
+        "Party Affiliation",
         "Voter Status",
     ]
     # more convenient column names
@@ -225,6 +285,7 @@ def fl_voter_file(min_names=0, verbose=False, load=True, save=True):
         "zipcode",
         "gender",
         "race",
+        "party",
         "voter_status",
     ]
 
@@ -261,6 +322,10 @@ def fl_voter_file(min_names=0, verbose=False, load=True, save=True):
     df["region"] = df["county"].map(lambda x: COUNTY_DICT.get(x, x))
     df["region"] = df["region"].map(lambda x: COUNTY_TO_REGION_DICT.get(x, x))
 
+    # add rural or urban designation
+    df['county_long'] = df['county'].map(COUNTY_DICT)
+    df['rural'] = df['county_long'].isin(FL_RURAL_COUNTIES)
+    print(df)
     # write dataframe to feather, but first reset index as required by feather
     if save:
         df = df.reset_index(drop=True)

@@ -39,7 +39,7 @@ import pandas as pd
 from tabulate import tabulate
 import cvxpy as cp
 
-from fields import *
+import fields
 import process_census
 import process_cps
 import washington_vf as wa_vf
@@ -58,10 +58,225 @@ def main():
     state = "fl"
     year = 2020
     df_agg = make_df_agg(state, year, subsample=False, load=True)
-    name = "takriti"
-    mask = df_agg["name"] == name
-    df_tmp = df_agg.loc[mask, ["name", "county", "vf_tot"] + RAKE_COLS]
-    print(tabulate(df_tmp, headers="keys", tablefmt="psql"))
+
+    df_cps_reg_voters = process_cps.cps_geo_race(state, year, voters=True)
+    calib_map = make_calib_map(df_cps_reg_voters, df_agg, verbose=False)
+    # table for rural and urban counties
+    df_state, df_rural, df_urban = plotting.vf_only_rural_tables(df_agg, cols = fields.BISG_BAYES_COLS, calib_map=calib_map)
+    print(tabulate(df_state, headers="keys"))
+    print(tabulate(df_urban, headers="keys"))
+    print(tabulate(df_rural, headers="keys"))
+    df_state, df_rural, df_urban = plotting.vf_only_rural_tables(df_agg, cols = fields.RAKE_COLS, calib_map=calib_map)
+    print(tabulate(df_state, headers="keys"))
+    print(tabulate(df_urban, headers="keys"))
+    print(tabulate(df_rural, headers="keys"))
+    # voterfile_state_table(filename, df_rural.loc['BISG', :].values, df_rural.loc['True', :].values)
+
+
+
+    quit()
+
+
+    # BISG estimate for race distribution in rural and non-rural counties
+    df_tmp = df_agg[['rural'] + fields.BISG_BAYES_COLS].groupby('rural').sum().astype(int)
+    df_tmp = df_tmp.div(df_tmp.sum(axis=1), axis=0)
+    # print(tabulate(df_tmp, headers="keys", tablefmt="psql"))
+    # total population
+    df_tmp = df_agg[fields.BISG_BAYES_COLS].sum().astype(int)
+    df_tmp = df_tmp.div(df_tmp.sum())
+    # print(df_tmp)
+    # print(tabulate(df_tmp, headers="keys", tablefmt="psql"))
+
+    # true race distribution rural and non-rural counties
+    df_tmp = df_agg[['rural'] + fields.VF_RACES].groupby('rural').sum().astype(int)
+    df_tmp = df_tmp.div(df_tmp.sum(axis=1), axis=0)
+    # print(tabulate(df_tmp, headers="keys", tablefmt="psql"))
+    # total population
+    df_tmp = df_agg[fields.VF_RACES].sum().astype(int)
+    df_tmp = df_tmp.div(df_tmp.sum())
+    # print(df_tmp)
+
+    # voter file only BISG for the full state
+    cols = fields.VF_BISG
+    preds_fl, true_pops_fl, true_probs1 = subpopulation_preds(
+        df_agg, cols, region="region", calib_map=None
+    )
+    preds_fl = np.sum(preds_fl, axis=0).astype(int)
+    true_pops_fl = np.sum(true_pops_fl, axis=0)
+    preds_fl_pct = preds_fl / preds_fl.sum()
+    true_pops_fl_pct = true_pops_fl / true_pops_fl.sum()
+
+    # print(f'fl, voter file BISG: {preds_fl}')
+    # print(f'fl, voter file true: {true_pops_fl}')
+    # print(f'fl, voter file BISG: {preds_fl / preds_fl.sum()}')
+    # print(f'fl, voter file true: {true_pops_fl / true_pops_fl.sum()}')
+    df_fl = pd.DataFrame(data=np.vstack((preds_fl, true_pops_fl, preds_fl_pct, true_pops_fl_pct,
+                                         preds_fl - true_pops_fl, (preds_fl - true_pops_fl)/true_pops_fl)),
+                         columns=fields.PRETTY_PRINT, index=['BISG', 'True', 'BISG %', 'True %', 'Error', 'Relative Error'])
+    print('voter file only BISG and true for full state')
+    print(tabulate(df_fl, headers="keys", tablefmt="psql"))
+
+    # voter file only rural
+    cols = fields.VF_BISG
+    preds_rural, true_pops_rural, true_probs1 = subpopulation_preds(
+        df_agg[df_agg['rural']], cols, region="region", calib_map=None
+    )
+    preds_rural = np.sum(preds_rural, axis=0).astype(int)
+    true_pops_rural = np.sum(true_pops_rural, axis=0)
+    preds_rural_pct = preds_rural / preds_rural.sum()
+    true_pops_rural_pct = true_pops_rural / true_pops_rural.sum()
+    df_rural = pd.DataFrame(data=np.vstack((preds_rural, true_pops_rural, preds_rural_pct, true_pops_rural_pct,
+                                            preds_rural - true_pops_rural,
+                                            (preds_rural - true_pops_rural) / true_pops_rural)),
+                            columns=fields.PRETTY_PRINT, index=['BISG', 'True', 'BISG %', 'True %', 'Error', 'Relative Error'])
+    print(tabulate(df_rural, headers="keys", tablefmt="psql"))
+
+    preds_urban, true_pops_urban, true_probs_urban = subpopulation_preds(
+        df_agg[~df_agg['rural']], cols, region="region", calib_map=None
+    )
+    preds_urban = np.sum(preds_urban, axis=0).astype(int)
+    true_pops_urban = np.sum(true_pops_urban, axis=0)
+    preds_urban_pct = preds_urban / preds_urban.sum()
+    true_pops_urban_pct = true_pops_urban / true_pops_urban.sum()
+    df_urban = pd.DataFrame(data=np.vstack((preds_urban, true_pops_urban, preds_urban_pct, true_pops_urban_pct,
+                                            preds_urban - true_pops_urban,
+                                            (preds_urban - true_pops_urban) / true_pops_urban)),
+                            columns=fields.PRETTY_PRINT, index=['BISG', 'True', 'BISG %', 'True %', 'Error', 'Relative Error'])
+    print(tabulate(df_urban, headers="keys", tablefmt="psql"))
+
+
+
+    # bar plot
+    fig, axs = plt.subplots(1, 3, figsize=(20, 6))
+
+    # first plot, mean absolute deviation
+    labels = fields.PRETTY_PRINT
+    # ignore "other" category
+    labels = labels[:5]
+    preds1 = preds1[:, :5]
+    preds2 = preds2[:, :5]
+    true_pops2 = true_pops2[:, :5]
+
+    # x axis label locations
+    xlocs = np.arange(len(labels))
+    width = 0.35  # the width of the bars
+
+    # average errors
+    avg_errs1 = df_urban.loc['Relative Error']
+    avg_errs2 = preds2.sum(axis=0) / true_pops2.sum(axis=0) - 1
+    max_err = np.max(np.abs((avg_errs1, avg_errs2)))
+
+    # if errors are 0, make them small, but non-zero so that a small bar appears
+    fac = 0.004
+    avg_errs1[np.abs(avg_errs1) < max_err * fac] = max_err * fac
+    avg_errs2[np.abs(avg_errs2) < max_err * fac] = max_err * fac
+
+    axs[0].bar(xlocs - width / 2, avg_errs1, width, label=label1, color="b")
+    axs[0].bar(xlocs + width / 2, avg_errs2, width, label=label2, color="r")
+    axs[0].bar(labels, 0)
+
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    axs[0].set_xticks(xlocs, labels)
+    axs[0].legend(fontsize=26, frameon=False)
+    ymax = np.max(np.abs([avg_errs1, avg_errs2])) + 0.05
+    axs[0].axis(ymin=-ymax, ymax=ymax)
+    axs[0].tick_params(axis="x", labelsize=18)
+    axs[0].tick_params(axis="y", labelsize=18)
+
+    # titles
+    axs[0].set_title(f"Average Error", fontsize=35)
+
+    fig.tight_layout(h_pad=6)
+    fig.savefig(filename, bbox_inches="tight", dpi=fig.dpi)
+
+    quit()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # predictions
+    df_cps_reg_voters = process_cps.cps_geo_race(state, year, voters=True)
+    calib_map = make_calib_map(df_cps_reg_voters, df_agg, verbose=False)
+    # rural
+    cols = fields.BISG_BAYES_COLS
+    bisg_preds, true_pops_rural, true_probs1 = subpopulation_preds(
+        df_agg[~df_agg['rural']], cols, region="region", calib_map=calib_map
+    )
+    bisg_preds = np.sum(bisg_preds, axis=0).astype(int)
+    true_pops_rural = np.sum(true_pops_rural, axis=0)
+    bisg_preds_pct = bisg_preds / bisg_preds.sum()
+    true_pops_rural_pct = true_pops_rural / true_pops_rural.sum()
+    print(f'rural, BISG: {bisg_preds / bisg_preds.sum()}')
+    print(f'rural, true: {true_pops_rural / true_pops_rural.sum()}')
+    df_bisg = pd.DataFrame(data=np.vstack((bisg_preds, true_pops_rural, bisg_preds_pct, true_pops_rural_pct,
+                                            bisg_preds - true_pops_rural,
+                                            (bisg_preds - true_pops_rural) / true_pops_rural)),
+                            columns=fields.PRETTY_PRINT, index=['BISG', 'True', 'BISG %', 'True %', 'Error', 'Relative Error'])
+    # print(tabulate(df_rural, headers="keys", tablefmt="psql"))
+
+
+    cols = fields.RAKE_COLS
+    rake_preds, true, _ = subpopulation_preds(
+        df_agg[~df_agg['rural']], cols, region="region", calib_map=calib_map
+    )
+    rake_preds = np.sum(rake_preds, axis=0).astype(int)
+    true = np.sum(true, axis=0)
+    rake_preds_pct = rake_preds / rake_preds.sum()
+    true_pct = true / true.sum()
+    df_rake = pd.DataFrame(data=np.vstack((rake_preds, true, rake_preds_pct, true_pct,
+                                            rake_preds - true, (rake_preds - true) / true)),
+                            columns=fields.PRETTY_PRINT, index=['rake', 'True', 'rake %',
+                                                        'True %', 'rake error', 'rake relative error'])
+    df_rural = pd.concat([df_bisg, df_rake])
+    print(tabulate(df_rural, headers="keys", tablefmt="psql"))
+
+    quit()
+
+
+    # urban
+    cols = fields.VF_BISG
+    preds_urban, true_pops_urban, true_probs1 = subpopulation_preds(
+        df_agg[~df_agg['rural']], cols, region="region", calib_map=None
+    )
+    preds_urban = np.sum(preds_urban, axis=0).astype(int)
+    true_pops_urban = np.sum(true_pops_urban, axis=0)
+    # print(f'urban, voter file BISG: {preds_urban}')
+    # print(f'urban, voter file true: {true_pops_urban}')
+    print(f'urban, voter file BISG: {preds_urban / preds_urban.sum()}')
+    print(f'urban, voter file true: {true_pops_urban / true_pops_urban.sum()}')
+
+    quit()
+
+    cols = fields.VF_BISG
+    preds1, true_pops1, true_probs1 = subpopulation_preds(
+        df_agg, cols, region="county", calib_map=None
+    )
+    cols1 = ['preds_' + race for race in fields.RACES]
+    cols2 = ['true_' + race for race in fields.RACES]
+    cols3 = ['prop_' + race for race in fields.RACES]
+    preds_df = pd.DataFrame(data=np.hstack((preds1, true_pops1, true_probs1)), columns=cols1 + cols2 + cols3)
+    cols_errs = ['rel_err_' + race for race in fields.RACES]
+    preds_df[cols_errs] = (preds_df[cols1].values - preds_df[cols2].values) / preds_df[cols2].values
+    preds_df = preds_df[preds_df['prop_nh_white'] > 0.85]
+    # preds_df = preds_df[cols_errs]
+    err_tot = (preds_df[cols1].sum(axis=0).values - preds_df[cols2].sum(axis=0).values) / preds_df[cols2].sum(axis=0).values
+    print(err_tot)
+
+    print(tabulate(preds_df, headers="keys", tablefmt="psql"))
+    print(preds_df.shape)
+
+
 
 
 def write_dataverse_files():
@@ -77,7 +292,7 @@ def write_dataverse_files():
         filename = f"generated_data/df_agg_{state}{year}.feather"
         df_agg = pd.read_feather(filename)
         df_agg = df_agg.drop(columns=["vf_tot"])
-        # cols_to_keep = ['name', 'county'] + BISG_CEN_COUNTY_COLS + BISG_BAYES_COLS + RAKE_COLS
+        # cols_to_keep = ['name', 'county'] + fields.BISG_CEN_COUNTY_COLS + fields.BISG_BAYES_COLS + fields.RAKE_COLS
         # df_agg = df_agg[cols_to_keep]
 
         # filter out names that don't appear frequently enough (~1mil)
@@ -112,21 +327,21 @@ def make_df_vf_sub(df_vf, df_cps_reg_voters, verbose=False):
     """
 
     # cps race/ethnicity distribution
-    dist_cps = df_cps_reg_voters[RACES].values[0]
-    dist_vf = df_vf.groupby("race").size()[RACES].values
+    dist_cps = df_cps_reg_voters[fields.RACES].values[0]
+    dist_vf = df_vf.groupby("race").size()[fields.RACES].values
     dist_vf = dist_vf / np.sum(dist_vf)
     ratios = dist_cps / dist_vf
     # find race with maximum ration of cps / voter file
     ind_max = np.argmax(ratios)
 
     # construct adjusted voterfile totals that would match cps distribution
-    vf_count_dist = df_vf.groupby("race").size()[RACES].values
+    vf_count_dist = df_vf.groupby("race").size()[fields.RACES].values
     vf_count_dist_adj = dist_cps * vf_count_dist[ind_max] / dist_cps[ind_max]
     vf_count_dist_adj = vf_count_dist_adj.astype(int)
 
     # subsample each race separately and combine dataframes at the end
     dfs = []
-    for i, race in enumerate(RACES):
+    for i, race in enumerate(fields.RACES):
         df_tmp = df_vf[df_vf["race"] == race]
         nsample = int(vf_count_dist_adj[i])
         dfs.append(df_tmp.sample(n=nsample, replace=False, random_state=1))
@@ -139,7 +354,7 @@ def make_df_vf_sub(df_vf, df_cps_reg_voters, verbose=False):
             f"voter file target distribution: {vf_count_dist_adj / np.sum(vf_count_dist_adj)}"
         )
         print(
-            f'final voter file distribution: {df_vf_sub.groupby("race").size()[RACES].values / df_vf_sub.shape[0]}'
+            f'final voter file distribution: {df_vf_sub.groupby("race").size()[fields.RACES].values / df_vf_sub.shape[0]}'
         )
 
     return df_vf_sub
@@ -257,7 +472,7 @@ def make_df_agg(state, year, subsample=False, load=False):
     # add voter file race columns to df_agg if we have labels
     if race_labels:
         print("*appending to df_agg voter file race information")
-        df_agg = append_vf_race_cols(df_agg, df_vf)
+        df_agg = append_vf_race_cols(df_agg, df_vf, rake3=False, verbose=True)
 
     # black box bisg
     df_agg = black_box_bisg(df_agg, df_cen_counties, df_cen_surs, df_cen_usa)
@@ -298,9 +513,9 @@ def make_calib_map(df_cps_reg_voters, df_agg, verbose=False):
     """
     # create map from CPS predictions to VF predictions
     print("*constructing calibration map")
-    u = df_cps_reg_voters[RACES].values.T
+    u = df_cps_reg_voters[fields.RACES].values.T
     # voter file race distribution
-    df_tmp = df_agg[VF_RACES]
+    df_tmp = df_agg[fields.VF_RACES]
     v = df_tmp.sum(axis=0).div(df_tmp.sum(axis=0).sum()).values.reshape((-1, 1))
     cps_to_vf_map, _ = cps_to_vf_matrix(u, v, verbose=verbose)
     return cps_to_vf_map
@@ -333,27 +548,27 @@ def dist_summary(state, year, df_cen_usa, df_cen_counties, df_vf, df_cps_reg_vot
         several relevant race distributions
     """
     # census, usa
-    dist_usa = df_cen_usa[RACES] / df_cen_usa[RACES].sum().sum()
+    dist_usa = df_cen_usa[fields.RACES] / df_cen_usa[fields.RACES].sum().sum()
 
     # census, state
     dist_cen_state = (
-        df_cen_counties[RACES].sum(axis=0) / df_cen_counties[RACES].sum().sum()
+        df_cen_counties[fields.RACES].sum(axis=0) / df_cen_counties[fields.RACES].sum().sum()
     )
-    dist_cen_state = pd.DataFrame(dist_cen_state[RACES]).T
+    dist_cen_state = pd.DataFrame(dist_cen_state[fields.RACES]).T
 
     # census, state, over18
     dist_cen18_state = (
-        df_cen_counties[RACES18].sum(axis=0) / df_cen_counties[RACES18].sum().sum()
+        df_cen_counties[fields.RACES18].sum(axis=0) / df_cen_counties[fields.RACES18].sum().sum()
     )
-    dist_cen18_state = pd.DataFrame(dist_cen18_state[RACES18]).T
-    dist_cen18_state.columns = RACES
+    dist_cen18_state = pd.DataFrame(dist_cen18_state[fields.RACES18]).T
+    dist_cen18_state.columns = fields.RACES
 
     # voter file, state
     if "race" in df_vf.columns:
         dist_vf_state = (
             df_vf.groupby("race").size() / df_vf.groupby("race").size().sum()
         )
-        dist_vf_state = pd.DataFrame(dist_vf_state[RACES]).T
+        dist_vf_state = pd.DataFrame(dist_vf_state[fields.RACES]).T
 
         df = pd.concat(
             [
@@ -380,9 +595,9 @@ def dist_summary(state, year, df_cen_usa, df_cen_counties, df_vf, df_cps_reg_vot
             f"{state.upper()} {year} CPS voters",
         ]
     # reorder columns so population is first
-    df = df[["Population"] + RACES]
+    df = df[["Population"] + fields.RACES]
     # and make the race columns pretty
-    df.columns = ["Population"] + PRETTY_COLS
+    df.columns = ["Population"] + fields.PRETTY_PRINT
 
     return df
 
@@ -462,7 +677,7 @@ def ll_tables(state, df_agg, cols, calib_map=None):
     """
 
     # create list of columns
-    agg_cols = ["county", "region", "vf_tot"] + VF_RACES
+    agg_cols = ["county", "region", "vf_tot"] + fields.VF_RACES
     for col_list in cols:
         agg_cols = agg_cols + col_list
     df_tmp = df_agg.loc[:, agg_cols]
@@ -484,7 +699,7 @@ def ll_tables(state, df_agg, cols, calib_map=None):
 
         arrtmp = np.log10(arrtmp)
         arrtmp[arrtmp == -np.inf] = 0
-        arrtmp = np.sum(df_tmp[VF_RACES].values * arrtmp, axis=1)
+        arrtmp = np.sum(df_tmp[fields.VF_RACES].values * arrtmp, axis=1)
         df_tmp[ll_cols[i]] = -arrtmp
 
     # florida-wide
@@ -497,14 +712,14 @@ def ll_tables(state, df_agg, cols, calib_map=None):
         df_tmp_state["county"] = "Florida"
 
     # regions
-    df_region = df_tmp.groupby("region").sum()
+    df_region = df_tmp.groupby("region").sum(numeric_only=True)
     df_region = df_region.div(df_region["vf_tot"].values[:, np.newaxis])
     df_region = df_region[ll_cols].reset_index()
     df_region = df_region.append(df_tmp_state[["region"] + ll_cols], ignore_index=True)
     df_region["region"] = df_region["region"].str.title()
 
     # counties
-    df_tmp_county = df_tmp.groupby("county").sum()
+    df_tmp_county = df_tmp.groupby("county").sum(numeric_only=True)
     df_tmp_county = df_tmp_county.div(df_tmp_county["vf_tot"].values[:, np.newaxis])
     df_tmp_county = df_tmp_county[ll_cols].reset_index()
 
@@ -551,8 +766,8 @@ def l1_l2_tables(state, df_agg, cols, calib_map=None):
 
     # create list of columns
     agg_cols = ["county", "region", "vf_tot"]
-    if VF_BAYES_OPT_COLS not in cols:
-        agg_cols += VF_BAYES_OPT_COLS
+    if fields.VF_BAYES_OPT_COLS not in cols:
+        agg_cols += fields.VF_BAYES_OPT_COLS
     for colsi in cols:
         agg_cols = agg_cols + colsi
     df_tmp = df_agg.loc[:, agg_cols]
@@ -570,15 +785,15 @@ def l1_l2_tables(state, df_agg, cols, calib_map=None):
         # compute unweighted errors for each (surname, geolocation)
         if calib_map is not None:
             arrtmp = (
-                df_tmp[VF_BAYES_OPT_COLS].values
+                df_tmp[fields.VF_BAYES_OPT_COLS].values
                 - np.dot(calib_map, df_tmp[cols[i]].values.T).T
             )
             # if we're checking accuracy of the ground truth for debugging purposes,
             # then don't apply the calibration map
-            if cols[i] == VF_BAYES_OPT_COLS:
-                arrtmp = df_tmp[VF_BAYES_OPT_COLS].values - df_tmp[cols[i]].values
+            if cols[i] == fields.VF_BAYES_OPT_COLS:
+                arrtmp = df_tmp[fields.VF_BAYES_OPT_COLS].values - df_tmp[cols[i]].values
         else:
-            arrtmp = df_tmp[VF_BAYES_OPT_COLS].values - df_tmp[cols[i]].values
+            arrtmp = df_tmp[fields.VF_BAYES_OPT_COLS].values - df_tmp[cols[i]].values
         # scale errors by number of appearances of (surname, geolocation)
         arrtmp = arrtmp.astype(np.float64)
         df_tmp[l1_cols[i]] = np.sum(np.abs(arrtmp), axis=1) * df_tmp["vf_tot"].values
@@ -596,7 +811,7 @@ def l1_l2_tables(state, df_agg, cols, calib_map=None):
         df_tmp_state["county"] = "Florida"
 
     # regions
-    df_region = df_tmp.groupby("region").sum()
+    df_region = df_tmp.groupby("region").sum(numeric_only=True)
     df_region = df_region.div(df_region["vf_tot"].values[:, np.newaxis])
     df_region = df_region[l1_cols + l2_cols].reset_index()
     df_region = df_region.append(
@@ -605,7 +820,7 @@ def l1_l2_tables(state, df_agg, cols, calib_map=None):
     df_region["region"] = df_region["region"].str.title()
 
     # counties
-    df_county = df_tmp.groupby("county").sum()
+    df_county = df_tmp.groupby("county").sum(numeric_only=True)
     df_county = df_county.div(df_county["vf_tot"].values[:, np.newaxis])
     df_county = df_county[l1_cols + l2_cols].reset_index()
 
@@ -642,14 +857,14 @@ def construct_df_agg_init(state, df_vf):
     # is race is labeled, then create a column for each race corresponding to the
     # number of people of that race of a particular (surname, geolocation) pair
     if "race" in df_vf.columns:
-        df_agg[VF_RACES] = 0
+        df_agg[fields.VF_RACES] = 0
         # add race columns with hot-one encoding
-        for i, race in enumerate(RACES):
-            df_agg[VF_RACES[i]] = df_agg["race"] == race
+        for i, race in enumerate(fields.RACES):
+            df_agg[fields.VF_RACES[i]] = df_agg["race"] == race
         # create dataframe with county, name, race columns
-        df_agg = df_agg.groupby(["name", "county"]).sum().reset_index()
+        df_agg = df_agg.groupby(["name", "county"]).sum(numeric_only=True).reset_index()
         # total number of people with a given surname in a given region
-        df_agg["vf_tot"] = df_agg[VF_RACES].sum(axis=1)
+        df_agg["vf_tot"] = df_agg[fields.VF_RACES].sum(axis=1)
     else:
         # create dataframe with name and county
         df_agg = df_agg.groupby(["name", "county"]).size().reset_index()
@@ -657,12 +872,13 @@ def construct_df_agg_init(state, df_vf):
 
     # add regions
     if state == "fl":
-        df_agg["region"] = df_agg["county"].map(
+        df_agg["county_long"] = df_agg["county"].map(
             lambda x: florida_vf.COUNTY_DICT.get(x, x)
         )
-        df_agg["region"] = df_agg["region"].map(
+        df_agg["region"] = df_agg["county_long"].map(
             lambda x: florida_vf.COUNTY_TO_REGION_DICT.get(x, x)
         )
+        df_agg['rural'] = df_agg['county_long'].isin(florida_vf.FL_RURAL_COUNTIES)
     elif state == "nc":
         df_agg["region"] = df_agg["county"].map(
             lambda x: nc_vf.COUNTY_TO_REGION_DICT.get(x, x)
@@ -671,7 +887,7 @@ def construct_df_agg_init(state, df_vf):
     return df_agg
 
 
-def append_vf_race_cols(df_agg, df_vf, verbose=True):
+def append_vf_race_cols(df_agg, df_vf, rake3=False, verbose=True):
     """
     append columns to df_agg that require the race labels of, e.g. florida and north carolina's
     voter file.
@@ -680,6 +896,8 @@ def append_vf_race_cols(df_agg, df_vf, verbose=True):
     ----------
     df_agg : pandas dataframe
     df_vf : pandas dataframe
+    rake3 : bool, optional
+        include three-way raking predictions
     verbose : bool, optional
 
     Returns
@@ -695,9 +913,10 @@ def append_vf_race_cols(df_agg, df_vf, verbose=True):
     if verbose:
         print("*two-way raking on voter file")
     df_agg = two_way_raking(df_agg)
-    if verbose:
-        print("*three-way raking on voter file")
-    df_agg = three_way_raking(df_agg, tol=1e-3)
+    if rake3:
+        if verbose:
+            print("*three-way raking on voter file")
+        df_agg = three_way_raking(df_agg, tol=1e-3)
     return df_agg
 
 
@@ -722,14 +941,14 @@ def black_box_bisg(df_agg, df_cen_counties, df_cen_surs, df_cen_usa):
     df_agg = process_census.append_r_given_s_cols(df_agg, df_cen_surs)
 
     # census bisg, compute three factors in bisg formula
-    prob_of_r = df_cen_usa[PROB_COLS].values
-    r_given_surname = df_agg[CEN_R_GIVEN_SUR_COLS].values
-    r_given_geo = df_agg[CEN_R_GIVEN_GEO_COLS].values
+    prob_of_r = df_cen_usa[fields.PROB_COLS].values
+    r_given_surname = df_agg[fields.CEN_R_GIVEN_SUR_COLS].values
+    r_given_geo = df_agg[fields.CEN_R_GIVEN_GEO_COLS].values
 
     # construct prediction (county-level)
     bisg_preds = r_given_geo * r_given_surname / prob_of_r
     bisg_preds = bisg_preds / np.sum(bisg_preds, axis=1)[:, np.newaxis]
-    df_agg[BISG_CEN_COUNTY_COLS] = bisg_preds
+    df_agg[fields.BISG_CEN_COUNTY_COLS] = bisg_preds
 
     return df_agg
 
@@ -778,9 +997,9 @@ def get_v_given_r(df_cps_reg_voters, df_cen_counties):
         probability of being a registered voter given race, up to a constant
     """
     # P(R, V) up to a constant independent of R
-    rv_dist = df_cps_reg_voters[RACES].values
+    rv_dist = df_cps_reg_voters[fields.RACES].values
     # P(R) up to a constant independent of R
-    r_counts = df_cen_counties[RACES18].values.sum(axis=0)
+    r_counts = df_cen_counties[fields.RACES18].values.sum(axis=0)
     # P(V | R) up to a constant independent of R
     v_given_r = rv_dist / r_counts
     # normalize so numbers aren't tiny
@@ -810,16 +1029,16 @@ def append_r_given_gv(df_agg, df_cen_counties, v_given_r):
     pandas dataframe
         df_agg with new columns
     """
-    preds_new = df_cen_counties[PROB18_RACES].values * v_given_r
+    preds_new = df_cen_counties[fields.PROB18_RACES].values * v_given_r
     preds_new /= np.sum(preds_new, axis=1)[:, np.newaxis]
 
     # create dataframe with new predictions
-    df_cps_bayes_r_given_g = pd.DataFrame(data=preds_new, columns=RACES)
+    df_cps_bayes_r_given_g = pd.DataFrame(data=preds_new, columns=fields.RACES)
     df_cps_bayes_r_given_g["county_code"] = df_cen_counties["county"].values
     df_cps_bayes_r_given_g["total"] = df_cen_counties["total"].values
 
     # add to df_agg
-    for race in RACES:
+    for race in fields.RACES:
         dict1 = df_cps_bayes_r_given_g.set_index("county_code").to_dict()[race]
         df_agg[f"cps_bayes_r_given_geo_{race}"] = df_agg["county"].map(
             lambda x: dict1.get(x, x)
@@ -830,7 +1049,7 @@ def append_r_given_gv(df_agg, df_cen_counties, v_given_r):
 
 def append_r_given_sv(df_agg, df_cen_surs, v_given_r):
     """
-    add to df_Agg columns with
+    add to df_agg columns with
     estimate for P(R | G, V) using the conditional independence assumption
     gives the approximation P(V | R) * P(R | G). (side note: this happens to be
     equivalent to one step of ipf)
@@ -849,15 +1068,15 @@ def append_r_given_sv(df_agg, df_cen_surs, v_given_r):
     pandas dataframe
         df_agg with new columns
     """
-    preds_new = df_cen_surs[CEN_R_GIVEN_SUR_COLS].values * v_given_r
+    preds_new = df_cen_surs[fields.CEN_R_GIVEN_SUR_COLS].values * v_given_r
     preds_new /= np.sum(preds_new, axis=1)[:, np.newaxis]
-    df_cps_bayes_r_given_sur = pd.DataFrame(data=preds_new, columns=RACES)
+    df_cps_bayes_r_given_sur = pd.DataFrame(data=preds_new, columns=fields.RACES)
     # print(df_cps_bayes_r_given_sur)
     df_cps_bayes_r_given_sur["name"] = df_cen_surs["name"].values
     df_cps_bayes_r_given_sur["count"] = df_cen_surs["count"].values
 
     # add to df_agg
-    for race in RACES:
+    for race in fields.RACES:
         col = f"cps_bayes_r_given_sur_{race}"
         dict1 = df_cps_bayes_r_given_sur.set_index("name").to_dict()[race]
         df_agg[col] = df_agg["name"].map(lambda x: dict1.get(x, x))
@@ -866,16 +1085,16 @@ def append_r_given_sv(df_agg, df_cen_surs, v_given_r):
     if "all other names" in df_cen_surs["name"].unique():
         preds_other = (
             df_cen_surs.loc[
-                df_cen_surs["name"] == "all other names", CEN_R_GIVEN_SUR_COLS
+                df_cen_surs["name"] == "all other names", fields.CEN_R_GIVEN_SUR_COLS
             ].values[0]
             * v_given_r
         )
         preds_other = preds_other / np.sum(preds_other)
         mask = ~df_agg["name"].isin(df_cen_surs["name"].unique())
-        df_agg.loc[mask, CPS_BAYES_R_GIVEN_SUR_COLS] = preds_other
+        df_agg.loc[mask, fields.CPS_BAYES_R_GIVEN_SUR_COLS] = preds_other
 
     # set columns to floats
-    df_agg[CPS_BAYES_R_GIVEN_SUR_COLS] = df_agg[CPS_BAYES_R_GIVEN_SUR_COLS].astype(
+    df_agg[fields.CPS_BAYES_R_GIVEN_SUR_COLS] = df_agg[fields.CPS_BAYES_R_GIVEN_SUR_COLS].astype(
         "float64"
     )
 
@@ -891,7 +1110,7 @@ def append_raking_preds(df_agg, df_cps_reg_voters):
     Parameters
     ----------
     df_agg : pandas dataframe
-        must contain columns BISG_BAYES_COLS and 'vf_tot' (the total number of people of a
+        must contain columns fields.BISG_BAYES_COLS and 'vf_tot' (the total number of people of a
         particular (name, county) pair)
     df_cps_reg_voters : pandas dataframe
         race distribution of registered voters
@@ -899,18 +1118,19 @@ def append_raking_preds(df_agg, df_cps_reg_voters):
     Returns
     -------
     pandas dataframe
-        df_agg, the inputted df_agg with raking predictions appended in columns RAKE_COLS
+        df_agg, the inputted df_agg with raking predictions appended in columns fields.RAKE_COLS
     """
 
     # initialization of raking, bisg predictions
-    init = df_agg.loc[:, BISG_BAYES_COLS].values
-    row_margin = df_cps_reg_voters[RACES].values * df_agg.loc[:, "vf_tot"].sum()
+#############################    init = df_agg.loc[:, fields.BISG_BAYES_COLS].values
+    init = df_agg.loc[:, fields.BISG_CEN_COUNTY_COLS].values
+    row_margin = df_cps_reg_voters[fields.RACES].values * df_agg.loc[:, "vf_tot"].sum()
     col_margin = df_agg.loc[:, "vf_tot"].values
     preds_new, _, _ = ipf2d(
         init, row_margin, col_margin, tol=1e-6, iter_max=1000, normalize=True
     )
     # append predictions to df_agg
-    df_agg.loc[:, RAKE_COLS] = preds_new
+    df_agg.loc[:, fields.RAKE_COLS] = preds_new
 
     return df_agg
 
@@ -938,7 +1158,7 @@ def append_voter_bisg(df_agg, df_cps_reg_voters, df_cen_counties, df_cen_surs):
     Returns
     -------
     pandas dataframe
-       df_agg, the inputted df_agg with bisg predictions appended in columns BISG_BAYES_COLS
+       df_agg, the inputted df_agg with bisg predictions appended in columns fields.BISG_BAYES_COLS
     """
     # calculate P(V | R)
     v_given_r = get_v_given_r(df_cps_reg_voters, df_cen_counties)
@@ -947,12 +1167,12 @@ def append_voter_bisg(df_agg, df_cps_reg_voters, df_cen_counties, df_cen_surs):
     # bayes rule for race given surname for voters
     df_agg = append_r_given_sv(df_agg, df_cen_surs, v_given_r)
     # three factors in bisg formula
-    prob_of_r = df_cps_reg_voters[RACES].values
-    r_given_geo = df_agg[CPS_BAYES_R_GIVEN_GEO_COLS].values
-    r_given_surname = df_agg[CPS_BAYES_R_GIVEN_SUR_COLS].values
+    prob_of_r = df_cps_reg_voters[fields.RACES].values
+    r_given_geo = df_agg[fields.CPS_BAYES_R_GIVEN_GEO_COLS].values
+    r_given_surname = df_agg[fields.CPS_BAYES_R_GIVEN_SUR_COLS].values
     # prediction
     bisg_preds = bisg_np(prob_of_r, r_given_surname, r_given_geo)
-    df_agg[BISG_BAYES_COLS] = bisg_preds
+    df_agg[fields.BISG_BAYES_COLS] = bisg_preds
 
     return df_agg
 
@@ -1026,7 +1246,7 @@ def subpopulation_preds(df_agg, cols, region="county", calib_map=None):
 
     # add helpful columns
     df_subpops[region] = df_agg[region]
-    df_subpops[VF_RACES] = df_agg[VF_RACES]
+    df_subpops[fields.VF_RACES] = df_agg[fields.VF_RACES]
     df_subpops["vf_tot"] = df_agg["vf_tot"]
     df_subpops[cols] = df_subpops[cols].astype(float)
 
@@ -1036,18 +1256,19 @@ def subpopulation_preds(df_agg, cols, region="county", calib_map=None):
     df_subpops = df_subpops.loc[mask, :]
 
     # get predictions for each region
-    preds = df_subpops.groupby(region).sum()[cols].values
+    # preds = df_subpops.groupby(region).sum()[cols].values
+    preds = df_subpops.groupby(region).sum()[cols]
 
-    # convert to voter file population
+    # convert to voter file population and convert datatype to
     if calib_map is not None:
         print("*applying calib map to predictions")
-        preds = np.dot(calib_map, preds.T).T
+        preds[cols] = np.dot(calib_map, preds.values.T).T
 
     # get trues
-    true_pops = df_subpops.groupby(region).sum()[VF_RACES].values
-    true_probs = np.divide(true_pops, np.sum(true_pops, axis=1).reshape((-1, 1)))
+    true_pops = df_subpops.groupby(region).sum()[fields.VF_RACES]
+    true_probs = np.divide(true_pops.values, np.sum(true_pops.values, axis=1).reshape((-1, 1)))
 
-    return preds, true_pops, true_probs
+    return preds.values, true_pops.values, true_probs
 
 
 def ipf2d(init, row_margin, col_margin, tol=1e-6, iter_max=1000, normalize=True):
@@ -1170,7 +1391,7 @@ def two_way_tables(df_vf):
     df_tmp = df_tmp.to_frame("count").reset_index()
     df_tmp = pd.pivot_table(data=df_tmp, columns="race", index="county", values="count")
     df_tmp = df_tmp.fillna(0).reset_index()
-    df_vf_county_race = df_tmp[["county"] + RACES]
+    df_vf_county_race = df_tmp[["county"] + fields.RACES]
 
     return df_vf_name_race, df_vf_name_county, df_vf_county_race
 
@@ -1178,11 +1399,11 @@ def two_way_tables(df_vf):
 def basic_cols(df_agg, df_vf_name_race, df_vf_county_race):
     """
     add several important predictions to df_agg,
-    - VF_BAYES_OPT_COLS: the correct distribution for a given (name, county)
+    - fields.VF_BAYES_OPT_COLS: the correct distribution for a given (name, county)
     pair
-    - VF_R_GIVEN_GEO_COLS: statewide race given county
-    - VF_R_GIVEN_SUR_COLS: statewide race given surname
-    - VF_BISG_COLS: bisg predictions using the statewide voter file data for
+    - fields.VF_R_GIVEN_GEO_COLS: statewide race given county
+    - fields.VF_R_GIVEN_SUR_COLS: statewide race given surname
+    - fields.VF_BISG: bisg predictions using the statewide voter file data for
     p(r | s) and p(r) and using the county totals of the voterfile for
     p(r | g)
 
@@ -1202,43 +1423,53 @@ def basic_cols(df_agg, df_vf_name_race, df_vf_county_race):
     """
 
     # add "bayes optimal" predictions
-    df_agg[VF_BAYES_OPT_COLS] = df_agg[VF_RACES].div(
-        df_agg[VF_RACES].sum(axis=1), axis=0
+    df_agg[fields.VF_BAYES_OPT_COLS] = df_agg[fields.VF_RACES].div(
+        df_agg[fields.VF_RACES].sum(axis=1), axis=0
     )
 
     # race given county columns
-    for race in RACES:
+    for i, race in enumerate(fields.RACES):
         dict1 = df_vf_county_race.set_index("county").to_dict()[race]
-        df_agg[f"vf_r_given_geo_{race}"] = df_agg["county"].map(
-            lambda x: dict1.get(x, x)
-        )
+        df_agg[fields.VF_R_GEO_TOT_COLS[i]] = df_agg["county"].map(lambda x: dict1.get(x, x))
     # normalize race given county
-    df_agg[VF_R_GIVEN_GEO_COLS] = df_agg[VF_R_GIVEN_GEO_COLS].div(
-        df_agg[VF_R_GIVEN_GEO_COLS].sum(axis=1), axis=0
+    df_agg[fields.VF_R_GIVEN_GEO_COLS] = df_agg[fields.VF_R_GEO_TOT_COLS].div(
+        df_agg[fields.VF_R_GEO_TOT_COLS].sum(axis=1), axis=0
     )
 
     # race given surname columns
-    for race in RACES:
+    for i, race in enumerate(fields.RACES):
         dict1 = df_vf_name_race.set_index("name").to_dict()[race]
-        df_agg[f"vf_r_given_sur_{race}"] = df_agg["name"].map(lambda x: dict1.get(x, x))
+        df_agg[fields.VF_R_SUR_TOT_COLS[i]] = df_agg["name"].map(lambda x: dict1.get(x, x))
     # normalize such that each (name, county) probabilies sum to 1
-    df_agg[VF_R_GIVEN_SUR_COLS] = df_agg[VF_R_GIVEN_SUR_COLS].div(
-        df_agg[VF_R_GIVEN_SUR_COLS].sum(axis=1), axis=0
+    df_agg[fields.VF_R_GIVEN_SUR_COLS] = df_agg[fields.VF_R_SUR_TOT_COLS].div(
+        df_agg[fields.VF_R_SUR_TOT_COLS].sum(axis=1), axis=0
     )
+
+    # race by surname columns, no normalization
+    for race in fields.RACES:
+        dict1 = df_vf_name_race.set_index("name").to_dict()[race]
+        df_agg[f"vf_r_sur_tot_{race}"] = df_agg["name"].map(lambda x: dict1.get(x, x))
 
     # bisg for county
     prob_of_r = (
-        df_vf_county_race.sum(axis=0)[RACES]
-        .div(df_vf_county_race[RACES].sum().sum())
+        df_vf_county_race.sum(axis=0)[fields.RACES]
+        .div(df_vf_county_race[fields.RACES].sum().sum())
         .values
     )
-    r_given_geo = df_agg[VF_R_GIVEN_GEO_COLS].values
-    r_given_surname = df_agg[VF_R_GIVEN_SUR_COLS].values
+    r_given_geo = df_agg[fields.VF_R_GIVEN_GEO_COLS].values
+    r_given_surname = df_agg[fields.VF_R_GIVEN_SUR_COLS].values
 
     # bisg prediction
     bisg_preds = r_given_geo * r_given_surname / prob_of_r
     bisg_preds = bisg_preds / np.sum(bisg_preds, axis=1)[:, np.newaxis]
-    df_agg[VF_BISG_COLS] = bisg_preds
+    df_agg[fields.VF_BISG] = bisg_preds
+
+    # bisg with totals
+    prob_of_r = (df_vf_county_race.sum(axis=0)[fields.RACES].values)
+    r_given_geo = df_agg[fields.VF_R_GEO_TOT_COLS].values
+    r_given_surname = df_agg[fields.VF_R_SUR_TOT_COLS].values
+    bisg_preds_tot = r_given_geo * r_given_surname / prob_of_r
+    df_agg[fields.VF_BISG_TOT] = bisg_preds_tot
 
     return df_agg
 
@@ -1265,8 +1496,8 @@ def two_way_raking(df_agg, tol=1e-6, verbose=False):
         # only current county
         mask = df_agg["county"] == county
         # surname only estimates for initialization
-        init = df_agg[mask][VF_R_GIVEN_SUR_COLS].values
-        row_margin = np.sum(df_agg[mask][VF_RACES].values, axis=0)
+        init = df_agg[mask][fields.VF_R_GIVEN_SUR_COLS].values
+        row_margin = np.sum(df_agg[mask][fields.VF_RACES].values, axis=0)
         col_margin = df_agg[mask]["vf_tot"].values
         # ipf
         preds_new, err_row, err_col = ipf2d(
@@ -1279,7 +1510,7 @@ def two_way_raking(df_agg, tol=1e-6, verbose=False):
             print(f"county: {county}")
             print(f"errs: {err_row, err_col}")
         # add to big dataframe
-        df_agg.loc[mask, VF_RAKE2_COLS] = preds_new
+        df_agg.loc[mask, fields.VF_RAKE2_COLS] = preds_new
     return df_agg
 
 
@@ -1309,9 +1540,9 @@ def three_way_raking(df_agg, tol=1e-3):
     counties = df_agg["county"].unique()
     ncounties = np.shape(counties)[0]
 
-    arr3d = np.empty((nnames, ncounties, len(RACES)))
+    arr3d = np.empty((nnames, ncounties, len(fields.RACES)))
     # fill empty 3d array with data, going race by race
-    for i, race in enumerate(VF_RACES):
+    for i, race in enumerate(fields.VF_RACES):
         df_tmp = (
             df_agg.pivot(index="name", columns="county", values=race)
             .fillna(0)
@@ -1331,7 +1562,7 @@ def three_way_raking(df_agg, tol=1e-3):
         name_county,
         name_race,
         county_race,
-        RACES,
+        fields.RACES,
         counties,
         names,
         tol=tol,
@@ -1342,8 +1573,8 @@ def three_way_raking(df_agg, tol=1e-3):
     df_agg = df_agg.merge(df_tmp, how="left", on=["name", "county"])
 
     # normalize counts so that we now have probability predictions
-    df_agg[VF_RAKE3_COLS] = df_agg[VF_RAKE3_COUNTS].div(
-        df_agg[VF_RAKE3_COUNTS].sum(axis=1), axis=0
+    df_agg[fields.VF_RAKE3_COLS] = df_agg[fields.VF_RAKE3_COUNTS].div(
+        df_agg[fields.VF_RAKE3_COUNTS].sum(axis=1), axis=0
     )
 
     return df_agg
@@ -1452,7 +1683,7 @@ def ipf3d(
         df_tmp = pd.DataFrame(arr_iter[:, :, i], columns=counties, index=names)
         df_tmp = (
             df_tmp.stack()
-            .reset_index(name=VF_RAKE3_COUNTS[i])
+            .reset_index(name=fields.VF_RAKE3_COUNTS[i])
             .rename(columns={"level_0": "name", "level_1": "county"})
         )
         dfs.append(df_tmp)

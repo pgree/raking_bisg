@@ -31,7 +31,7 @@ cps_geo_race
 import os
 import pandas as pd
 import numpy as np
-from fields import *
+import fields
 
 CPS_HISPANIC_CODES = {"1": "hispanic", "2": "non-hispanic", "-1": "unknown"}
 
@@ -227,10 +227,10 @@ def cps_geo_race(state, year, voters, load=True, save=False):
     df = df.T
     df = df.div(df.sum().sum())
     # in some states, some subpopulations are not represented. set those to 0.
-    for race in RACES:
+    for race in fields.RACES:
         if race not in df.columns:
             df[race] = 0.0
-    df = df[RACES]
+    df = df[fields.RACES]
     df = df.reset_index(drop=True)
 
     # add state field and put it first

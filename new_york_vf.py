@@ -32,7 +32,7 @@ import pandas as pd
 
 
 def main():
-    ny_voter_file()
+    df = ny_voter_file()
 
 
 def ny_voter_file(load=True, save=True):

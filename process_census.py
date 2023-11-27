@@ -35,7 +35,7 @@ surnames
 import numpy as np
 import pandas as pd
 import os
-from fields import *
+import fields
 
 
 # dictionary in which keys are the field names used by the census and
@@ -443,8 +443,8 @@ def postprocess(df):
     df.loc[:, "other18"] = df.loc[:, "total18"] - df.loc[:, non_other_races].sum(axis=1)
 
     # add races proportions, i.e. normalize
-    df[PROB_COLS] = df[RACES].div(df[RACES].sum(axis=1), axis=0)
-    df[PROB18_RACES] = df[RACES18].div(df[RACES18].sum(axis=1), axis=0)
+    df[fields.PROB_COLS] = df[fields.RACES].div(df[fields.RACES].sum(axis=1), axis=0)
+    df[fields.PROB18_RACES] = df[fields.RACES18].div(df[fields.RACES18].sum(axis=1), axis=0)
 
     return df
 
@@ -646,8 +646,8 @@ def postprocess_usa(df):
     df.loc[:, "other18"] = df.loc[:, "total18"] - df.loc[:, non_other_races].sum(axis=1)
 
     # add races proportions, i.e. normalize
-    df[PROB_COLS] = df[RACES].div(df[RACES].sum(axis=1), axis=0)
-    df[PROB18_RACES] = df[RACES18].div(df[RACES18].sum(axis=1), axis=0)
+    df[fields.PROB_COLS] = df[fields.RACES].div(df[fields.RACES].sum(axis=1), axis=0)
+    df[fields.PROB18_RACES] = df[fields.RACES18].div(df[fields.RACES18].sum(axis=1), axis=0)
 
     return df
 
@@ -815,16 +815,16 @@ def append_r_given_g_cols(df_agg, df_cen_counties):
                     print(f"census: {counties2[i]}, voter file: {county}")
 
     # add race population columns corresponding to 18+ population
-    for i, race in enumerate(RACES):
-        dict1 = df_cen_counties.set_index("county").to_dict()[PROB18_RACES[i]]
-        df_agg[CEN18_R_GIVEN_GEO_COLS[i]] = df_agg["county"].map(
+    for i, race in enumerate(fields.RACES):
+        dict1 = df_cen_counties.set_index("county").to_dict()[fields.PROB18_RACES[i]]
+        df_agg[fields.CEN18_R_GIVEN_GEO_COLS[i]] = df_agg["county"].map(
             lambda x: dict1.get(x, x)
         )
 
     # add race population columns corresponding to full population
-    for i, race in enumerate(RACES):
-        dict1 = df_cen_counties.set_index("county").to_dict()[PROB_COLS[i]]
-        df_agg[CEN_R_GIVEN_GEO_COLS[i]] = df_agg["county"].map(
+    for i, race in enumerate(fields.RACES):
+        dict1 = df_cen_counties.set_index("county").to_dict()[fields.PROB_COLS[i]]
+        df_agg[fields.CEN_R_GIVEN_GEO_COLS[i]] = df_agg["county"].map(
             lambda x: dict1.get(x, x)
         )
 
@@ -848,7 +848,7 @@ def append_r_given_s_cols(df_agg, df_cen_surs):
         df_agg with the appended columns
     """
     # add surname data
-    for race in RACES:
+    for race in fields.RACES:
         col = f"cen_r_given_sur_{race}"
         dict1 = df_cen_surs.set_index("name").to_dict()[col]
         df_agg[col] = df_agg["name"].map(lambda x: dict1.get(x, x))
@@ -862,7 +862,7 @@ def append_r_given_s_cols(df_agg, df_cen_surs):
         ].values[0]
 
     # convert columns to doubles
-    for col in CEN_R_GIVEN_SUR_COLS:
+    for col in fields.CEN_R_GIVEN_SUR_COLS:
         df_agg = df_agg.astype({col: "float64"})
 
     return df_agg
@@ -930,11 +930,11 @@ def surnames():
     df_cen_surs = df_cen_surs.rename(columns=DICT_CEN_TO_RACES)
 
     # normalize rows, so that they are accurate to full precision, not 3 digits
-    df_cen_surs[RACES] = df_cen_surs[RACES].div(df_cen_surs[RACES].sum(axis=1), axis=0)
+    df_cen_surs[fields.RACES] = df_cen_surs[fields.RACES].div(df_cen_surs[fields.RACES].sum(axis=1), axis=0)
 
     # give race columns their usual names
     df_cen_surs = df_cen_surs.rename(
-        columns=dict(zip(RACES, [f"cen_r_given_sur_{race}" for race in RACES]))
+        columns=dict(zip(fields.RACES, [f"cen_r_given_sur_{race}" for race in fields.RACES]))
     )
 
     return df_cen_surs

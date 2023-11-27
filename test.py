@@ -6,7 +6,7 @@ raking predictions have the correct race/ethnicity margin and BISG predictions d
 """
 import pandas as pd
 import numpy as np
-from fields import *
+import fields
 from itertools import product
 from raking_bisg import append_voter_bisg, append_raking_preds, subpopulation_preds
 import unittest
@@ -103,28 +103,28 @@ class TestRakingBISG(unittest.TestCase):
         name_county_voters = np.sum(tab[:, :, :, 0], axis=2).reshape((-1, 1))
         df["vf_tot"] = name_county_voters
         name_county_race_voters = tab[:, :, :, 0].reshape((ncounties * nnames, nraces))
-        df[VF_RACES] = name_county_race_voters
+        df[fields.VF_RACES] = name_county_race_voters
         df_agg = df.copy()
 
         # race distribution for voters
         df_cps_reg_voters = np.sum(tab[:, :, :, 0], axis=(0, 1)).reshape((1, -1))
-        df_cps_reg_voters = pd.DataFrame(data=df_cps_reg_voters, columns=RACES)
+        df_cps_reg_voters = pd.DataFrame(data=df_cps_reg_voters, columns=fields.RACES)
         df_cps_reg_voters = df_cps_reg_voters.div(df_cps_reg_voters.sum().sum())
 
         # race by county
         df_cen_counties = np.sum(tab[:, :, :, :], axis=(0, 3))
-        df_cen_counties = pd.DataFrame(data=df_cen_counties, columns=RACES18)
+        df_cen_counties = pd.DataFrame(data=df_cen_counties, columns=fields.RACES18)
         df_cen_counties["county"] = COUNTIES
-        df_cen_counties[PROB18_RACES] = df_cen_counties[RACES18].div(
-            df_cen_counties[RACES18].sum(axis=1), axis=0
+        df_cen_counties[fields.PROB18_RACES] = df_cen_counties[fields.RACES18].div(
+            df_cen_counties[fields.RACES18].sum(axis=1), axis=0
         )
-        df_cen_counties["total"] = df_cen_counties[RACES18].sum(axis=1)
+        df_cen_counties["total"] = df_cen_counties[fields.RACES18].sum(axis=1)
 
         # race by surname
         df_cen_surs = np.sum(tab[:, :, :, :], axis=(1, 3))
-        df_cen_surs = pd.DataFrame(data=df_cen_surs, columns=CEN_R_GIVEN_SUR_COLS)
-        df_cen_surs["count"] = df_cen_surs[CEN_R_GIVEN_SUR_COLS].sum(axis=1)
-        df_cen_surs[CEN_R_GIVEN_SUR_COLS] = df_cen_surs[CEN_R_GIVEN_SUR_COLS].div(
+        df_cen_surs = pd.DataFrame(data=df_cen_surs, columns=fields.CEN_R_GIVEN_SUR_COLS)
+        df_cen_surs["count"] = df_cen_surs[fields.CEN_R_GIVEN_SUR_COLS].sum(axis=1)
+        df_cen_surs[fields.CEN_R_GIVEN_SUR_COLS] = df_cen_surs[fields.CEN_R_GIVEN_SUR_COLS].div(
             df_cen_surs["count"], axis=0
         )
         df_cen_surs["name"] = NAMES
@@ -137,10 +137,10 @@ class TestRakingBISG(unittest.TestCase):
 
         # make raking and bisg predictions
         preds1, true_pops1, true_probs1 = subpopulation_preds(
-            df_agg, RAKE_COLS, region="county", calib_map=None
+            df_agg, fields.RAKE_COLS, region="county", calib_map=None
         )
         preds2, true_pops2, true_probs2 = subpopulation_preds(
-            df_agg, BISG_BAYES_COLS, region="county", calib_map=None
+            df_agg, fields.BISG_BAYES_COLS, region="county", calib_map=None
         )
         np.testing.assert_allclose(preds1, true_pops1)
         np.testing.assert_allclose(preds2, true_pops2)
@@ -160,28 +160,28 @@ class TestRakingBISG(unittest.TestCase):
         name_county_voters = np.sum(tab[:, :, :, 0], axis=2).reshape((-1, 1))
         df["vf_tot"] = name_county_voters
         name_county_race_voters = tab[:, :, :, 0].reshape((ncounties * nnames, nraces))
-        df[VF_RACES] = name_county_race_voters
+        df[fields.VF_RACES] = name_county_race_voters
         df_agg = df.copy()
 
         # race distribution for voters
         df_cps_reg_voters = np.sum(tab[:, :, :, 0], axis=(0, 1)).reshape((1, -1))
-        df_cps_reg_voters = pd.DataFrame(data=df_cps_reg_voters, columns=RACES)
+        df_cps_reg_voters = pd.DataFrame(data=df_cps_reg_voters, columns=fields.RACES)
         df_cps_reg_voters = df_cps_reg_voters.div(df_cps_reg_voters.sum().sum())
 
         # race by county
         df_cen_counties = np.sum(tab[:, :, :, :], axis=(0, 3))
-        df_cen_counties = pd.DataFrame(data=df_cen_counties, columns=RACES18)
+        df_cen_counties = pd.DataFrame(data=df_cen_counties, columns=fields.RACES18)
         df_cen_counties["county"] = COUNTIES
-        df_cen_counties[PROB18_RACES] = df_cen_counties[RACES18].div(
-            df_cen_counties[RACES18].sum(axis=1), axis=0
+        df_cen_counties[fields.PROB18_RACES] = df_cen_counties[fields.RACES18].div(
+            df_cen_counties[fields.RACES18].sum(axis=1), axis=0
         )
-        df_cen_counties["total"] = df_cen_counties[RACES18].sum(axis=1)
+        df_cen_counties["total"] = df_cen_counties[fields.RACES18].sum(axis=1)
 
         # race by surname
         df_cen_surs = np.sum(tab[:, :, :, :], axis=(1, 3))
-        df_cen_surs = pd.DataFrame(data=df_cen_surs, columns=CEN_R_GIVEN_SUR_COLS)
-        df_cen_surs["count"] = df_cen_surs[CEN_R_GIVEN_SUR_COLS].sum(axis=1)
-        df_cen_surs[CEN_R_GIVEN_SUR_COLS] = df_cen_surs[CEN_R_GIVEN_SUR_COLS].div(
+        df_cen_surs = pd.DataFrame(data=df_cen_surs, columns=fields.CEN_R_GIVEN_SUR_COLS)
+        df_cen_surs["count"] = df_cen_surs[fields.CEN_R_GIVEN_SUR_COLS].sum(axis=1)
+        df_cen_surs[fields.CEN_R_GIVEN_SUR_COLS] = df_cen_surs[fields.CEN_R_GIVEN_SUR_COLS].div(
             df_cen_surs["count"], axis=0
         )
         df_cen_surs["name"] = NAMES
@@ -194,10 +194,10 @@ class TestRakingBISG(unittest.TestCase):
 
         # make raking and bisg predictions
         preds1, true_pops1, true_probs1 = subpopulation_preds(
-            df_agg, RAKE_COLS, region="county", calib_map=None
+            df_agg, fields.RAKE_COLS, region="county", calib_map=None
         )
         preds2, true_pops2, true_probs2 = subpopulation_preds(
-            df_agg, BISG_BAYES_COLS, region="county", calib_map=None
+            df_agg, fields.BISG_BAYES_COLS, region="county", calib_map=None
         )
         # assert that raking recovers the correct race margins
         np.testing.assert_allclose(np.sum(preds1, axis=0), np.sum(true_pops1, axis=0))
