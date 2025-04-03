@@ -1,9 +1,9 @@
 # Race/ethnicity predictions via raking and BISG
 
 This repository includes all software for reproducing the figures and tables of the paper 
-"BISG: When inferring race or ethnicity, does it matter that people often live near 
-their relatives?" by Philip Greengard and Andrew Gelman 
-([pre-print](https://arxiv.org/abs/2304.09126)). 
+"A calibrated BISG for inferring race from surname and geolocation" by Philip Greengard and Andrew Gelman:
+
+Philip Greengard, Andrew Gelman, A calibrated BISG for inferring race from surname and geolocation, Journal of the Royal Statistical Society Series A: Statistics in Society, 2025;, qnaf003, https://doi.org/10.1093/jrsssa/qnaf003
 
 The code in this repository constructs race/ethnicity (subpopulation) predictions for registered voters in 
 several states. 
