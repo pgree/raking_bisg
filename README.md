@@ -1,9 +1,9 @@
 # Race/ethnicity predictions via raking and BISG
 
 This repository includes all software for reproducing the figures and tables of the paper 
-"A calibrated BISG for inferring race from surname and geolocation" by Philip Greengard and Andrew Gelman:
-
-Philip Greengard, Andrew Gelman, A calibrated BISG for inferring race from surname and geolocation, Journal of the Royal Statistical Society Series A: Statistics in Society, 2025;, qnaf003, https://doi.org/10.1093/jrsssa/qnaf003
+"BISG: When inferring race or ethnicity, does it matter that people often live near 
+their relatives?" by Philip Greengard and Andrew Gelman 
+([pre-print](https://arxiv.org/abs/2304.09126)). 
 
 The code in this repository constructs race/ethnicity (subpopulation) predictions for registered voters in 
 several states. 
@@ -48,7 +48,62 @@ be loaded into memory with the Python commands
 > df_agg = pd.read_pickle('path/to/df_agg_{state}{year}_dataverse.pkl')
 ```
 
-The columns of the dataframe are explained in the file `./fields.py`.
+## Data Dictionary
+
+Below is a description of the fields included in the `df_agg` dataframe:
+
+### Core Identification Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Surname of voter, converted to lowercase |
+| `county` | string | County code or identifier where the voter is registered |
+| `county_long` | string | Full county name (only in some state datasets, e.g., Florida) |
+| `region` | string | Geographic region within the state (when available) |
+| `rural` | boolean | Flag indicating if the county is classified as rural (when available) |
+| `in_cen_surs` | boolean | Flag indicating if the surname appears in the Census surname list |
+| `vf_tot` | integer | Total number of voters with the given surname in the county |
+
+### Race/Ethnicity Categories
+
+The package uses six racial/ethnic categories throughout. For each prediction type, there will be six fields, one for each category:
+
+- `nh_white`: Non-Hispanic White
+- `nh_black`: Non-Hispanic Black
+- `nh_api`: Non-Hispanic Asian and Pacific Islander
+- `nh_aian`: Non-Hispanic American Indian and Alaska Native
+- `hispanic`: Hispanic (any race)
+- `other`: Other races and multi-racial
+
+### Field Patterns
+
+For each prediction type or data source, there is a set of six fields (one for each race/ethnicity category) following consistent naming patterns:
+
+- Voter File Race Counts (labeled files only), pattern `vf_{race}`: Count of voters of each race/ethnicity for the given surname-county pair.
+
+- Census Data Probabilities:
+  - Pattern `cen_r_given_geo_{race}`: Census-based probability of being of a race/ethnicity given the county.
+  - Pattern `cen18_r_given_geo_{race}`: Census-based probability for the 18+ population given the county.
+  - Pattern `cen_r_given_sur_{race}`: Census-based probability given the surname.
+
+- CPS Voter-Adjusted Probabilities:
+  - Pattern `cps_bayes_r_given_geo_{race}`: CPS-adjusted probability given the county for voters.
+  - Pattern `cps_bayes_r_given_sur_{race}`: CPS-adjusted probability given the surname for voters.
+
+- Prediction Fields:
+  - Pattern `bisg_cen_county_{race}`: BISG prediction using Census data for the full US population.
+  - Pattern `bisg_bayes_{race}`: Voter-BISG prediction adjusted for registered voters using CPS data.
+  - Pattern `rake_{race}`: Raking prediction matching the CPS voter race distribution margin.
+
+- Additional Voter File Fields (labeled files only):
+  - Pattern `vf_r_given_geo_{race}`: Voter file-based probability given the county.
+  - Pattern `vf_r_given_sur_{race}`: Voter file-based probability given the surname.
+  - Pattern `vf_bisg_{race}`: Voter file BISG prediction.
+  - Pattern `vf_bayes_opt_{race}`: Actual probability (ground truth from labeled voter files).
+  - Pattern `vf_r_geo_tot_{race}`: Raw count of voters of each race in a county.
+  - Pattern `vf_r_sur_tot_{race}`: Raw count of voters of each race with a particular surname.
+  - Pattern `vf_bisg_tot_{race}`: Unnormalized BISG scores.
+  - Pattern `vf_rake3_count_{race}`: Counts from three-way raking procedure (when implemented).
 
 ## Unit test
 A unit test can be run from the home directory of this repository via the command 
@@ -94,4 +149,4 @@ raking and BISG predictions
 
 `test.py` : unit test
 
-`download_data_and_run.py` : script that 
+`download_data_and_run.py` : script that downloads available data and reproduces figures and tables for the paper
