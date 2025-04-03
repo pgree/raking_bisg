@@ -48,11 +48,9 @@ be loaded into memory with the Python commands
 > df_agg = pd.read_pickle('path/to/df_agg_{state}{year}_dataverse.pkl')
 ```
 
-## Data Dictionary
+## Data format
 
 Below is a description of the fields included in the `df_agg` dataframe:
-
-### Core Identification Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -64,8 +62,6 @@ Below is a description of the fields included in the `df_agg` dataframe:
 | `in_cen_surs` | boolean | Flag indicating if the surname appears in the Census surname list |
 | `vf_tot` | integer | Total number of voters with the given surname in the county |
 
-### Race/Ethnicity Categories
-
 The package uses six racial/ethnic categories throughout. For each prediction type, there will be six fields, one for each category:
 
 - `nh_white`: Non-Hispanic White
@@ -75,35 +71,34 @@ The package uses six racial/ethnic categories throughout. For each prediction ty
 - `hispanic`: Hispanic (any race)
 - `other`: Other races and multi-racial
 
-### Field Patterns
-
 For each prediction type or data source, there is a set of six fields (one for each race/ethnicity category) following consistent naming patterns:
 
-- Voter File Race Counts (labeled files only), pattern `vf_{race}`: Count of voters of each race/ethnicity for the given surname-county pair.
+- Voter File Race Counts (labeled files only):
+  - `vf_{race}`: Count of voters of each race/ethnicity for the given surname-county pair.
 
 - Census Data Probabilities:
-  - Pattern `cen_r_given_geo_{race}`: Census-based probability of being of a race/ethnicity given the county.
-  - Pattern `cen18_r_given_geo_{race}`: Census-based probability for the 18+ population given the county.
-  - Pattern `cen_r_given_sur_{race}`: Census-based probability given the surname.
+  - `cen_r_given_geo_{race}`: Census-based probability of being of a race/ethnicity given the county.
+  - `cen18_r_given_geo_{race}`: Census-based probability for the 18+ population given the county.
+  - `cen_r_given_sur_{race}`: Census-based probability given the surname.
 
 - CPS Voter-Adjusted Probabilities:
-  - Pattern `cps_bayes_r_given_geo_{race}`: CPS-adjusted probability given the county for voters.
-  - Pattern `cps_bayes_r_given_sur_{race}`: CPS-adjusted probability given the surname for voters.
+  - `cps_bayes_r_given_geo_{race}`: CPS-adjusted probability given the county for voters.
+  - `cps_bayes_r_given_sur_{race}`: CPS-adjusted probability given the surname for voters.
 
 - Prediction Fields:
-  - Pattern `bisg_cen_county_{race}`: BISG prediction using Census data for the full US population.
-  - Pattern `bisg_bayes_{race}`: Voter-BISG prediction adjusted for registered voters using CPS data.
-  - Pattern `rake_{race}`: Raking prediction matching the CPS voter race distribution margin.
+  - `bisg_cen_county_{race}`: BISG prediction using Census data for the full US population.
+  - `bisg_bayes_{race}`: Voter-BISG prediction adjusted for registered voters using CPS data.
+  - `rake_{race}`: Raking prediction matching the CPS voter race distribution margin.
 
 - Additional Voter File Fields (labeled files only):
-  - Pattern `vf_r_given_geo_{race}`: Voter file-based probability given the county.
-  - Pattern `vf_r_given_sur_{race}`: Voter file-based probability given the surname.
-  - Pattern `vf_bisg_{race}`: Voter file BISG prediction.
-  - Pattern `vf_bayes_opt_{race}`: Actual probability (ground truth from labeled voter files).
-  - Pattern `vf_r_geo_tot_{race}`: Raw count of voters of each race in a county.
-  - Pattern `vf_r_sur_tot_{race}`: Raw count of voters of each race with a particular surname.
-  - Pattern `vf_bisg_tot_{race}`: Unnormalized BISG scores.
-  - Pattern `vf_rake3_count_{race}`: Counts from three-way raking procedure (when implemented).
+  - `vf_r_given_geo_{race}`: Voter file-based probability given the county.
+  - `vf_r_given_sur_{race}`: Voter file-based probability given the surname.
+  - `vf_bisg_{race}`: Voter file BISG prediction.
+  - `vf_bayes_opt_{race}`: Actual probability (ground truth from labeled voter files).
+  - `vf_r_geo_tot_{race}`: Raw count of voters of each race in a county.
+  - `vf_r_sur_tot_{race}`: Raw count of voters of each race with a particular surname.
+  - `vf_bisg_tot_{race}`: Unnormalized BISG scores.
+  - `vf_rake3_count_{race}`: Counts from three-way raking procedure (when implemented).
 
 ## Unit test
 A unit test can be run from the home directory of this repository via the command 
