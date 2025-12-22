@@ -920,8 +920,14 @@ def surnames():
     df_cen_surs["missing"] = df_cen_surs["count"] - df_cen_surs["known"]
     # percentage missing
     df_cen_surs["to_fill"] = df_cen_surs["missing"].div(df_cen_surs["count"])
-    # how much to put in each missing entry (same across given row)
-    df_cen_surs["fill_amount"] = df_cen_surs["to_fill"].div(mask_ss.sum(axis=1))
+
+    s_count = mask_ss.sum(axis=1)  # how many suppressed cells per row
+    df_cen_surs["fill_amount"] = 0.0
+    has_s = s_count > 0
+    df_cen_surs.loc[has_s, "fill_amount"] = df_cen_surs.loc[has_s, "to_fill"].div(
+        s_count.loc[has_s]
+    )
+
     # replace NaNs with the correct value
     for col in CEN_RACES_COLS:
         df_cen_surs[col] = df_cen_surs[col].fillna(df_cen_surs["fill_amount"])
@@ -929,15 +935,23 @@ def surnames():
     # change column names
     df_cen_surs = df_cen_surs.rename(columns=DICT_CEN_TO_RACES)
 
-    # normalize rows, so that they are accurate to full precision, not 3 digits
-    df_cen_surs[fields.RACES] = df_cen_surs[fields.RACES].div(df_cen_surs[fields.RACES].sum(axis=1), axis=0)
+    # normalize rows, so that they are accurate to full precision
+    df_cen_surs[fields.RACES] = df_cen_surs[fields.RACES].div(
+        df_cen_surs[fields.RACES].sum(axis=1), axis=0
+    )
 
     # give race columns their usual names
     df_cen_surs = df_cen_surs.rename(
-        columns=dict(zip(fields.RACES, [f"cen_r_given_sur_{race}" for race in fields.RACES]))
+        columns=dict(
+            zip(
+                fields.RACES,
+                [f"cen_r_given_sur_{race}" for race in fields.RACES],
+            )
+        )
     )
 
     return df_cen_surs
+
 
 
 def geo_info_2010():

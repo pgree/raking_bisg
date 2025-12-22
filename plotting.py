@@ -460,16 +460,6 @@ def self_contained_figures_tables(state, year, dir_out, load=False):
     filename = tables_dir + f"{state}{year}_vf_table_state.tex"
     voterfile_state_table(filename, preds1vf, true_pops1vf)
 
-    # self-contained voterfile table for rural and urban counties
-    df_tmp = df_agg[df_agg['in_cen_surs']]
-    df_state, df_rural, df_urban = vf_only_rural_tables(df_tmp, cols=fields.VF_BISG)
-    # rural counties
-    filename = tables_dir + f"{state}{year}_vf_table_rural.tex"
-    voterfile_state_table(filename, df_rural.loc['BISG', :].values, df_rural.loc['True', :].values)
-    # urban counties
-    filename = tables_dir + f"{state}{year}_vf_table_urban.tex"
-    voterfile_state_table(filename, df_urban.loc['BISG', :].values, df_urban.loc['True', :].values)
-
     # self-contained voter file scatter plots
     filename = figures_dir + f"{state}{year}_vf_scatters.pdf"
     two_row_comp(

@@ -715,7 +715,7 @@ def ll_tables(state, df_agg, cols, calib_map=None):
     df_region = df_tmp.groupby("region").sum(numeric_only=True)
     df_region = df_region.div(df_region["vf_tot"].values[:, np.newaxis])
     df_region = df_region[ll_cols].reset_index()
-    df_region = df_region.append(df_tmp_state[["region"] + ll_cols], ignore_index=True)
+    df_region = pd.concat([df_region, df_tmp_state[["region"] + ll_cols]], ignore_index=True)
     df_region["region"] = df_region["region"].str.title()
 
     # counties
@@ -727,8 +727,8 @@ def ll_tables(state, df_agg, cols, calib_map=None):
     if state == "fl":
         df_tmp_county["county"] = df_tmp_county["county"].map(florida_vf.COUNTY_DICT)
     df_tmp_county = df_tmp_county.sort_values("county")
-    df_tmp_county = df_tmp_county.append(
-        df_tmp_state[["county"] + ll_cols], ignore_index=True
+    df_tmp_county = pd.concat([df_tmp_county,
+        df_tmp_state[["county"] + ll_cols]], ignore_index=True
     )
 
     return df_region, df_tmp_county
@@ -814,8 +814,9 @@ def l1_l2_tables(state, df_agg, cols, calib_map=None):
     df_region = df_tmp.groupby("region").sum(numeric_only=True)
     df_region = df_region.div(df_region["vf_tot"].values[:, np.newaxis])
     df_region = df_region[l1_cols + l2_cols].reset_index()
-    df_region = df_region.append(
-        df_tmp_state[["region"] + l1_cols + l2_cols], ignore_index=True
+    df_region = pd.concat(
+        [df_region, df_tmp_state[["region"] + l1_cols + l2_cols]],
+        ignore_index=True,
     )
     df_region["region"] = df_region["region"].str.title()
 
@@ -828,8 +829,8 @@ def l1_l2_tables(state, df_agg, cols, calib_map=None):
     if state == "fl":
         df_county["county"] = df_county["county"].map(florida_vf.COUNTY_DICT)
     df_county = df_county.sort_values("county")
-    df_county = df_county.append(
-        df_tmp_state[["county"] + l1_cols + l2_cols], ignore_index=True
+    df_county = pd.concat([df_county,
+        df_tmp_state[["county"] + l1_cols + l2_cols]], ignore_index=True
     )
 
     return df_region, df_county

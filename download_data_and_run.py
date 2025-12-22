@@ -2,7 +2,7 @@ import os
 import requests
 import zipfile
 import io
-from unlzw import unlzw
+from unlzw3 import unlzw
 
 from plotting import (
     subsampled_figures_tables,
@@ -13,8 +13,8 @@ from plotting import (
 
 def main():
     download_plot_nc2010(dir_out="./")
-    download_plot_nc2020(dir_out="./")
-    download_plot_fl2020(dir_out="./")
+    # download_plot_nc2020(dir_out="./")
+    # download_plot_fl2020(dir_out="./")
 
 
 def download_plot_fl2020(dir_out):
